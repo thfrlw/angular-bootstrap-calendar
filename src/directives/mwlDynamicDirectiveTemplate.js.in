@@ -23,6 +23,7 @@ angular
             'via a tool such as https://www.npmjs.com/package/gulp-angular-templatecache');
         }
       }
+      console.log(templateName);
       var template = $templateCache.get(templateName);
       $element.html(template);
       $compile($element.contents())($scope);

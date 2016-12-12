@@ -6,14 +6,14 @@
  */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory(require("angular"), (function webpackLoadOptionalExternalModule() { try { return require("interact.js"); } catch(e) {} }()), require("moment"));
+		module.exports = factory(require("angular"), require("moment"));
 	else if(typeof define === 'function' && define.amd)
-		define(["angular", "interact", "moment"], factory);
+		define(["angular", "moment"], factory);
 	else if(typeof exports === 'object')
-		exports["angularBootstrapCalendarModuleName"] = factory(require("angular"), (function webpackLoadOptionalExternalModule() { try { return require("interact.js"); } catch(e) {} }()), require("moment"));
+		exports["angularBootstrapCalendarModuleName"] = factory(require("angular"), require("moment"));
 	else
-		root["angularBootstrapCalendarModuleName"] = factory(root["angular"], root["interact"], root["moment"]);
-})(this, function(__WEBPACK_EXTERNAL_MODULE_12__, __WEBPACK_EXTERNAL_MODULE_66__, __WEBPACK_EXTERNAL_MODULE_68__) {
+		root["angularBootstrapCalendarModuleName"] = factory(root["angular"], root["moment"]);
+})(this, function(__WEBPACK_EXTERNAL_MODULE_12__, __WEBPACK_EXTERNAL_MODULE_53__) {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -111,8 +111,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }]).name;
 
 	requireAll(__webpack_require__(13));
-	requireAll(__webpack_require__(55));
-	requireAll(__webpack_require__(60));
+	requireAll(__webpack_require__(17));
+	requireAll(__webpack_require__(22));
 
 
 /***/ },
@@ -143,20 +143,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var map = {
 		"./mwlCalendar.js": 14,
-		"./mwlCalendarDay.js": 15,
-		"./mwlCalendarHourList.js": 16,
-		"./mwlCalendarMonth.js": 43,
-		"./mwlCalendarSlideBox.js": 44,
-		"./mwlCalendarWeek.js": 45,
-		"./mwlCalendarYear.js": 46,
-		"./mwlCollapseFallback.js": 47,
-		"./mwlDateModifier.js": 48,
-		"./mwlDragSelect.js": 49,
-		"./mwlDraggable.js": 50,
-		"./mwlDroppable.js": 51,
-		"./mwlDynamicDirectiveTemplate.js": 52,
-		"./mwlElementDimensions.js": 53,
-		"./mwlResizable.js": 54
+		"./mwlCalendarMonth.js": 15,
+		"./mwlDateModifier.js": 16
 	};
 	function webpackContext(req) {
 		return __webpack_require__(webpackContextResolve(req));
@@ -298,7 +286,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	  .directive('mwlCalendar', function() {
 
 	    return {
-	      template: '<div mwl-dynamic-directive-template name="calendar" overrides="vm.customTemplateUrls"></div>',
+	      // template: '<div mwl-dynamic-directive-template name="calendar" overrides="vm.customTemplateUrls"></div>',
+	      templateUrl: 'mwl/calendar.html',
 	      restrict: 'E',
 	      scope: {
 	        events: '=',
@@ -339,91 +328,158 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	angular
 	  .module('mwl.calendar')
-	  .controller('MwlCalendarDayCtrl', ["$scope", "moment", "calendarHelper", "calendarEventTitle", function($scope, moment, calendarHelper, calendarEventTitle) {
+	  .controller('MwlCalendarMonthCtrl', ["$scope", "moment", "calendarHelper", "calendarConfig", function($scope, moment, calendarHelper, calendarConfig) {
 
 	    var vm = this;
+	    vm.calendarConfig = calendarConfig;
+	    // vm.calendarEventTitle = calendarEventTitle;
+	    vm.openRowIndex = null;
 
-	    vm.calendarEventTitle = calendarEventTitle;
+	    function toggleCell() {
+	      vm.openRowIndex = null;
+	      vm.openDayIndex = null;
 
-	    function refreshView() {
-	      vm.dayViewSplit = vm.dayViewSplit || 30;
-	      vm.dayViewHeight = calendarHelper.getDayViewHeight(
-	        vm.dayViewStart,
-	        vm.dayViewEnd,
-	        vm.dayViewSplit
-	      );
-
-	      var view = calendarHelper.getDayView(
-	        vm.events,
-	        vm.viewDate,
-	        vm.dayViewStart,
-	        vm.dayViewEnd,
-	        vm.dayViewSplit,
-	        vm.dayViewEventWidth
-	      );
-
-	      vm.allDayEvents = view.allDayEvents;
-	      vm.nonAllDayEvents = view.events;
-	      vm.viewWidth = view.width + 62;
-
+	      if (vm.cellIsOpen && vm.view) {
+	        vm.view.forEach(function(day, dayIndex) {
+	          if (moment(vm.viewDate).startOf('day').isSame(day.date)) {
+	            vm.openDayIndex = dayIndex;
+	            vm.openRowIndex = Math.floor(dayIndex / 7);
+	          }
+	        });
+	      }
 	    }
 
-	    $scope.$on('calendar.refreshView', refreshView);
+	    $scope.$on('calendar.refreshView', function() {
 
-	    $scope.$watchGroup([
-	      'vm.dayViewStart',
-	      'vm.dayViewEnd',
-	      'vm.dayViewSplit'
-	    ], refreshView);
+	      vm.weekDays = calendarHelper.getWeekDayNames();
 
-	    vm.eventDragComplete = function(event, minuteChunksMoved) {
-	      var minutesDiff = minuteChunksMoved * vm.dayViewSplit;
-	      var newStart = moment(event.startsAt).add(minutesDiff, 'minutes');
-	      var newEnd = moment(event.endsAt).add(minutesDiff, 'minutes');
-	      delete event.tempStartsAt;
+	      var monthView = calendarHelper.getMonthView(vm.events, vm.viewDate, vm.cellModifier);
+	      vm.view = monthView.days;
+	      vm.monthOffsets = monthView.rowOffsets;
 
-	      vm.onEventTimesChanged({
-	        calendarEvent: event,
-	        calendarNewEventStart: newStart.toDate(),
-	        calendarNewEventEnd: event.endsAt ? newEnd.toDate() : null
-	      });
-	    };
-
-	    vm.eventDragged = function(event, minuteChunksMoved) {
-	      var minutesDiff = minuteChunksMoved * vm.dayViewSplit;
-	      event.tempStartsAt = moment(event.startsAt).add(minutesDiff, 'minutes').toDate();
-	    };
-
-	    vm.eventResizeComplete = function(event, edge, minuteChunksMoved) {
-	      var minutesDiff = minuteChunksMoved * vm.dayViewSplit;
-	      var start = moment(event.startsAt);
-	      var end = moment(event.endsAt);
-	      if (edge === 'start') {
-	        start.add(minutesDiff, 'minutes');
-	      } else {
-	        end.add(minutesDiff, 'minutes');
+	      if (vm.cellAutoOpenDisabled) {
+	        toggleCell();
+	      } else if (!vm.cellAutoOpenDisabled && vm.cellIsOpen && vm.openRowIndex === null) {
+	        //Auto open the calendar to the current day if set
+	        vm.openDayIndex = null;
+	        vm.view.forEach(function(day) {
+	          if (day.inMonth && moment(vm.viewDate).startOf('day').isSame(day.date)) {
+	            vm.dayClicked(day, true);
+	          }
+	        });
 	      }
-	      delete event.tempStartsAt;
 
-	      vm.onEventTimesChanged({
-	        calendarEvent: event,
-	        calendarNewEventStart: start.toDate(),
-	        calendarNewEventEnd: end.toDate()
-	      });
-	    };
+	    });
 
-	    vm.eventResized = function(event, edge, minuteChunksMoved) {
-	      var minutesDiff = minuteChunksMoved * vm.dayViewSplit;
-	      if (edge === 'start') {
-	        event.tempStartsAt = moment(event.startsAt).add(minutesDiff, 'minutes').toDate();
+	    if (vm.cellAutoOpenDisabled) {
+	      $scope.$watchGroup([
+	        'vm.cellIsOpen',
+	        'vm.viewDate'
+	      ], toggleCell);
+	    }
+
+	    vm.dayClicked = function(day, dayClickedFirstRun, $event) {
+
+	      if (!dayClickedFirstRun) {
+	        vm.onTimespanClick({
+	          calendarDate: day.date.toDate(),
+	          calendarCell: day,
+	          $event: $event
+	        });
+	        if ($event && $event.defaultPrevented) {
+	          return;
+	        }
 	      }
+
+	      if (!vm.cellAutoOpenDisabled) {
+	        vm.openRowIndex = null;
+	        var dayIndex = vm.view.indexOf(day);
+	        if (dayIndex === vm.openDayIndex) { //the day has been clicked and is already open
+	          vm.openDayIndex = null; //close the open day
+	          vm.cellIsOpen = false;
+	        } else {
+	          vm.openDayIndex = dayIndex;
+	          vm.openRowIndex = Math.floor(dayIndex / 7);
+	          vm.cellIsOpen = true;
+	        }
+	      }
+
 	    };
+
+	    // vm.highlightEvent = function(event, shouldAddClass) {
+	    //
+	    //   vm.view.forEach(function(day) {
+	    //     delete day.highlightClass;
+	    //     delete day.backgroundColor;
+	    //     if (shouldAddClass) {
+	    //       var dayContainsEvent = day.events.indexOf(event) > -1;
+	    //       if (dayContainsEvent) {
+	    //         day.backgroundColor = event.color ? event.color.secondary : '';
+	    //       }
+	    //     }
+	    //   });
+	    //
+	    // };
+
+	    // vm.handleEventDrop = function(event, newDayDate, draggedFromDate) {
+	    //
+	    //   var newStart = moment(event.startsAt)
+	    //     .date(moment(newDayDate).date())
+	    //     .month(moment(newDayDate).month())
+	    //     .year(moment(newDayDate).year());
+	    //
+	    //   var newEnd = calendarHelper.adjustEndDateFromStartDiff(event.startsAt, newStart, event.endsAt);
+	    //
+	    //   vm.onEventTimesChanged({
+	    //     calendarEvent: event,
+	    //     calendarDate: newDayDate,
+	    //     calendarNewEventStart: newStart.toDate(),
+	    //     calendarNewEventEnd: newEnd ? newEnd.toDate() : null,
+	    //     calendarDraggedFromDate: draggedFromDate
+	    //   });
+	    // };
+	    //
+	    // vm.getWeekNumberLabel = function(day) {
+	    //   var weekNumber = day.date.clone().add(1, 'day').isoWeek();
+	    //   if (typeof calendarConfig.i18nStrings.weekNumber === 'function') {
+	    //     return calendarConfig.i18nStrings.weekNumber({weekNumber: weekNumber});
+	    //   } else {
+	    //     return calendarConfig.i18nStrings.weekNumber.replace('{week}', weekNumber);
+	    //   }
+	    // };
+	    //
+	    // vm.onDragSelectStart = function(day) {
+	    //   if (!vm.dateRangeSelect) {
+	    //     vm.dateRangeSelect = {
+	    //       startDate: day.date,
+	    //       endDate: day.date
+	    //     };
+	    //   }
+	    // };
+	    //
+	    // vm.onDragSelectMove = function(day) {
+	    //   if (vm.dateRangeSelect) {
+	    //     vm.dateRangeSelect.endDate = day.date;
+	    //   }
+	    // };
+	    //
+	    // vm.onDragSelectEnd = function(day) {
+	    //   vm.dateRangeSelect.endDate = day.date;
+	    //   if (vm.dateRangeSelect.endDate > vm.dateRangeSelect.startDate) {
+	    //     vm.onDateRangeSelect({
+	    //       calendarRangeStartDate: vm.dateRangeSelect.startDate.clone().startOf('day').toDate(),
+	    //       calendarRangeEndDate: vm.dateRangeSelect.endDate.clone().endOf('day').toDate()
+	    //     });
+	    //   }
+	    //   delete vm.dateRangeSelect;
+	    // };
 
 	  }])
-	  .directive('mwlCalendarDay', function() {
+	  .directive('mwlCalendarMonth', function() {
 
 	    return {
-	      template: '<div mwl-dynamic-directive-template name="calendarDayView" overrides="vm.customTemplateUrls"></div>',
+	      // template: '<div mwl-dynamic-directive-template name="calendarMonthViewSimple" overrides="vm.customTemplateUrls"></div>',
+	      templateUrl: 'mwl/calendarMonthView.html',
 	      restrict: 'E',
 	      require: '^mwlCalendar',
 	      scope: {
@@ -431,18 +487,19 @@ return /******/ (function(modules) { // webpackBootstrap
 	        viewDate: '=',
 	        onEventClick: '=',
 	        onEventTimesChanged: '=',
-	        onTimespanClick: '=',
 	        onDateRangeSelect: '=',
-	        dayViewStart: '=',
-	        dayViewEnd: '=',
-	        dayViewSplit: '=',
-	        dayViewEventChunkSize: '=',
-	        dayViewEventWidth: '=',
-	        customTemplateUrls: '=?',
+	        cellIsOpen: '=',
+	        cellAutoOpenDisabled: '=',
+	        onTimespanClick: '=',
 	        cellModifier: '=',
-	        templateScope: '='
+	        slideBoxDisabled: '=',
+	        customTemplateUrls: '=?',
+	        templateScope: '=',
 	      },
-	      controller: 'MwlCalendarDayCtrl as vm',
+	      controller: 'MwlCalendarMonthCtrl as vm',
+	      link: function(scope, element, attrs, calendarCtrl) {
+	        scope.vm.calendarCtrl = calendarCtrl;
+	      },
 	      bindToController: true
 	    };
 
@@ -456,137 +513,40 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 
 	var angular = __webpack_require__(12);
-	var calendarUtils = __webpack_require__(17);
 
 	angular
 	  .module('mwl.calendar')
-	  .controller('MwlCalendarHourListCtrl', ["$scope", "moment", "calendarHelper", "calendarConfig", function($scope, moment, calendarHelper, calendarConfig) {
+	  .controller('MwlDateModifierCtrl', ["$element", "$attrs", "$scope", "moment", function($element, $attrs, $scope, moment) {
+
 	    var vm = this;
 
-	    function updateDays() {
-
-	      vm.dayViewSplit = parseInt(vm.dayViewSplit);
-	      var dayStart = (vm.dayViewStart || '00:00').split(':');
-	      var dayEnd = (vm.dayViewEnd || '23:59').split(':');
-	      vm.hourGrid = calendarUtils.getDayViewHourGrid({
-	        viewDate: calendarConfig.showTimesOnWeekView ? moment(vm.viewDate).startOf('week').toDate() : moment(vm.viewDate).toDate(),
-	        hourSegments: 60 / vm.dayViewSplit,
-	        dayStart: {
-	          hour: dayStart[0],
-	          minute: dayStart[1]
-	        },
-	        dayEnd: {
-	          hour: dayEnd[0],
-	          minute: dayEnd[1]
-	        }
-	      });
-
-	      vm.hourGrid.forEach(function(hour) {
-	        hour.segments.forEach(function(segment) {
-
-	          segment.date = moment(segment.date);
-	          segment.nextSegmentDate = segment.date.clone().add(vm.dayViewSplit, 'minutes');
-
-	          if (calendarConfig.showTimesOnWeekView) {
-
-	            segment.days = [];
-
-	            for (var i = 0; i < 7; i++) {
-	              var day = {
-	                date: moment(segment.date).add(i, 'days')
-	              };
-	              day.nextSegmentDate = day.date.clone().add(vm.dayViewSplit, 'minutes');
-	              vm.cellModifier({calendarCell: day});
-	              segment.days.push(day);
-	            }
-
-	          } else {
-	            vm.cellModifier({calendarCell: segment});
-	          }
-
-	        });
-	      });
-
+	    function onClick() {
+	      if (angular.isDefined($attrs.setToToday)) {
+	        vm.date = new Date();
+	      } else if (angular.isDefined($attrs.increment)) {
+	        vm.date = moment(vm.date).add(1, vm.increment).toDate();
+	      } else if (angular.isDefined($attrs.decrement)) {
+	        vm.date = moment(vm.date).subtract(1, vm.decrement).toDate();
+	      }
+	      $scope.$apply();
 	    }
 
-	    var originalLocale = moment.locale();
+	    $element.bind('click', onClick);
 
-	    $scope.$on('calendar.refreshView', function() {
-
-	      if (originalLocale !== moment.locale()) {
-	        originalLocale = moment.locale();
-	        updateDays();
-	      }
-
+	    $scope.$on('$destroy', function() {
+	      $element.unbind('click', onClick);
 	    });
-
-	    $scope.$watchGroup([
-	      'vm.dayViewStart',
-	      'vm.dayViewEnd',
-	      'vm.dayViewSplit',
-	      'vm.viewDate'
-	    ], function() {
-	      updateDays();
-	    });
-
-	    vm.eventDropped = function(event, date) {
-	      var newStart = moment(date);
-	      var newEnd = calendarHelper.adjustEndDateFromStartDiff(event.startsAt, newStart, event.endsAt);
-
-	      vm.onEventTimesChanged({
-	        calendarEvent: event,
-	        calendarDate: date,
-	        calendarNewEventStart: newStart.toDate(),
-	        calendarNewEventEnd: newEnd ? newEnd.toDate() : null
-	      });
-	    };
-
-	    vm.onDragSelectStart = function(date, dayIndex) {
-	      if (!vm.dateRangeSelect) {
-	        vm.dateRangeSelect = {
-	          active: true,
-	          startDate: date,
-	          endDate: date,
-	          dayIndex: dayIndex
-	        };
-	      }
-	    };
-
-	    vm.onDragSelectMove = function(date) {
-	      if (vm.dateRangeSelect) {
-	        vm.dateRangeSelect.endDate = date;
-	      }
-	    };
-
-	    vm.onDragSelectEnd = function(date) {
-	      if (vm.dateRangeSelect) {
-	        vm.dateRangeSelect.endDate = date;
-	        if (vm.dateRangeSelect.endDate > vm.dateRangeSelect.startDate) {
-	          vm.onDateRangeSelect({calendarRangeStartDate: vm.dateRangeSelect.startDate, calendarRangeEndDate: vm.dateRangeSelect.endDate});
-	        }
-	        delete vm.dateRangeSelect;
-	      }
-	    };
 
 	  }])
-	  .directive('mwlCalendarHourList', function() {
+	  .directive('mwlDateModifier', function() {
 
 	    return {
-	      restrict: 'E',
-	      template: '<div mwl-dynamic-directive-template name="calendarHourList" overrides="vm.customTemplateUrls"></div>',
-	      controller: 'MwlCalendarHourListCtrl as vm',
+	      restrict: 'A',
+	      controller: 'MwlDateModifierCtrl as vm',
 	      scope: {
-	        viewDate: '=',
-	        dayViewStart: '=',
-	        dayViewEnd: '=',
-	        dayViewSplit: '=',
-	        dayWidth: '=?',
-	        onTimespanClick: '=',
-	        onDateRangeSelect: '=',
-	        onEventTimesChanged: '=',
-	        customTemplateUrls: '=?',
-	        cellModifier: '=',
-	        templateScope: '='
+	        date: '=',
+	        increment: '=',
+	        decrement: '='
 	      },
 	      bindToController: true
 	    };
@@ -598,9 +558,599 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 17 */
 /***/ function(module, exports, __webpack_require__) {
 
+	var map = {
+		"./calendarDate.js": 18,
+		"./calendarLimitTo.js": 19,
+		"./calendarTruncateEventTitle.js": 20,
+		"./calendarTrustAsHtml.js": 21
+	};
+	function webpackContext(req) {
+		return __webpack_require__(webpackContextResolve(req));
+	};
+	function webpackContextResolve(req) {
+		return map[req] || (function() { throw new Error("Cannot find module '" + req + "'.") }());
+	};
+	webpackContext.keys = function webpackContextKeys() {
+		return Object.keys(map);
+	};
+	webpackContext.resolve = webpackContextResolve;
+	module.exports = webpackContext;
+	webpackContext.id = 17;
+
+
+/***/ },
+/* 18 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var angular = __webpack_require__(12);
+
+	angular
+	  .module('mwl.calendar')
+	  .filter('calendarDate', ["calendarHelper", "calendarConfig", function(calendarHelper, calendarConfig) {
+
+	    function calendarDate(date, format, getFromConfig) {
+
+	      if (getFromConfig === true) {
+	        format = calendarConfig.dateFormats[format];
+	      }
+
+	      return calendarHelper.formatDate(date, format);
+
+	    }
+
+	    // This is stateful because the locale can change as well
+	    // as calendarConfig.dateFormats which would change the value outside of this filter
+	    calendarDate.$stateful = true;
+
+	    return calendarDate;
+
+	  }]);
+
+
+/***/ },
+/* 19 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var angular = __webpack_require__(12);
+
+	angular
+	  .module('mwl.calendar')
+	  .filter('calendarLimitTo', ["limitToFilter", function(limitToFilter) {
+
+	    if (angular.version.minor >= 4) { //1.4+ supports the begin attribute
+	      return limitToFilter;
+	    }
+
+	    //Copied from the angular source. Only 1.4 has the begin functionality.
+	    return function(input, limit, begin) {
+	      if (Math.abs(Number(limit)) === Infinity) {
+	        limit = Number(limit);
+	      } else {
+	        limit = parseInt(limit);
+	      }
+	      if (isNaN(limit)) {
+	        return input;
+	      }
+
+	      if (angular.isNumber(input)) {
+	        input = input.toString();
+	      }
+	      if (!angular.isArray(input) && !angular.isString(input)) {
+	        return input;
+	      }
+
+	      begin = (!begin || isNaN(begin)) ? 0 : parseInt(begin);
+	      begin = (begin < 0 && begin >= -input.length) ? input.length + begin : begin;
+
+	      if (limit >= 0) {
+	        return input.slice(begin, begin + limit);
+	      } else if (begin === 0) {
+	        return input.slice(limit, input.length);
+	      } else {
+	        return input.slice(Math.max(0, begin + limit), begin);
+	      }
+	    };
+
+	  }]);
+
+
+/***/ },
+/* 20 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var angular = __webpack_require__(12);
+
+	angular
+	  .module('mwl.calendar')
+	  .filter('calendarTruncateEventTitle', function() {
+
+	    return function(string, length, boxHeight) {
+	      if (!string) {
+	        return '';
+	      }
+
+	      //Only truncate if if actually needs truncating
+	      if (string.length >= length && string.length / 20 > boxHeight / 30) {
+	        return string.substr(0, length) + '...';
+	      } else {
+	        return string;
+	      }
+	    };
+
+	  });
+
+
+/***/ },
+/* 21 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var angular = __webpack_require__(12);
+
+	angular
+	  .module('mwl.calendar')
+	  .filter('calendarTrustAsHtml', ["$sce", function($sce) {
+
+	    return function(text) {
+	      return $sce.trustAsHtml(text);
+	    };
+
+	  }]);
+
+
+/***/ },
+/* 22 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var map = {
+		"./calendarConfig.js": 23,
+		"./calendarHelper.js": 24,
+		"./calendarTitle.js": 51,
+		"./moment.js": 52
+	};
+	function webpackContext(req) {
+		return __webpack_require__(webpackContextResolve(req));
+	};
+	function webpackContextResolve(req) {
+		return map[req] || (function() { throw new Error("Cannot find module '" + req + "'.") }());
+	};
+	webpackContext.keys = function webpackContextKeys() {
+		return Object.keys(map);
+	};
+	webpackContext.resolve = webpackContextResolve;
+	module.exports = webpackContext;
+	webpackContext.id = 22;
+
+
+/***/ },
+/* 23 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var angular = __webpack_require__(12);
+
+	angular
+	  .module('mwl.calendar')
+	  .constant('calendarConfig', {
+	    allDateFormats: {
+	      angular: {
+	        date: {
+	          hour: 'ha',
+	          day: 'd MMM',
+	          month: 'MMMM',
+	          weekDay: 'EEEE',
+	          time: 'HH:mm',
+	          datetime: 'MMM d, h:mm a'
+	        },
+	        title: {
+	          day: 'EEEE d MMMM, yyyy',
+	          week: 'Week {week} of {year}',
+	          month: 'MMMM yyyy',
+	          year: 'yyyy'
+	        }
+	      },
+	      moment: {
+	        date: {
+	          hour: 'ha',
+	          day: 'D MMM',
+	          month: 'MMMM',
+	          weekDay: 'dddd',
+	          time: 'HH:mm',
+	          datetime: 'MMM D, h:mm a'
+	        },
+	        title: {
+	          day: 'dddd D MMMM, YYYY',
+	          week: 'Week {week} of {year}',
+	          month: 'MMMM YYYY',
+	          year: 'YYYY'
+	        }
+	      }
+	    },
+	    get dateFormats() {
+	      return this.allDateFormats[this.dateFormatter].date;
+	    },
+	    get titleFormats() {
+	      return this.allDateFormats[this.dateFormatter].title;
+	    },
+	    dateFormatter: 'angular',
+	    showTimesOnWeekView: false,
+	    displayAllMonthEvents: false,
+	    i18nStrings: {
+	      weekNumber: 'Week {week}'
+	    },
+	    templates: {},
+	    colorTypes: {
+	      info: {
+	        primary: '#1e90ff',
+	        secondary: '#d1e8ff'
+	      },
+	      important: {
+	        primary: '#ad2121',
+	        secondary: '#fae3e3'
+	      },
+	      warning: {
+	        primary: '#e3bc08',
+	        secondary: '#fdf1ba'
+	      },
+	      inverse: {
+	        primary: '#1b1b1b',
+	        secondary: '#c1c1c1'
+	      },
+	      special: {
+	        primary: '#800080',
+	        secondary: '#ffe6ff'
+	      },
+	      success: {
+	        primary: '#006400',
+	        secondary: '#caffca'
+	      }
+	    }
+	  });
+
+
+/***/ },
+/* 24 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var angular = __webpack_require__(12);
+	var calendarUtils = __webpack_require__(25);
+
+	angular
+	  .module('mwl.calendar')
+	  .factory('calendarHelper', ["$q", "$templateRequest", "dateFilter", "moment", "calendarConfig", function($q, $templateRequest, dateFilter, moment, calendarConfig) {
+
+	    function formatDate(date, format) {
+	      if (calendarConfig.dateFormatter === 'angular') {
+	        return dateFilter(moment(date).toDate(), format);
+	      } else if (calendarConfig.dateFormatter === 'moment') {
+	        return moment(date).format(format);
+	      } else {
+	        throw new Error('Unknown date formatter: ' + calendarConfig.dateFormatter);
+	      }
+	    }
+
+	    function adjustEndDateFromStartDiff(oldStart, newStart, oldEnd) {
+	      if (!oldEnd) {
+	        return oldEnd;
+	      }
+	      var diffInSeconds = moment(newStart).diff(moment(oldStart));
+	      return moment(oldEnd).add(diffInSeconds);
+	    }
+
+	    // function getRecurringEventPeriod(eventPeriod, recursOn, containerPeriodStart) {
+	    //
+	    //   var eventStart = moment(eventPeriod.start);
+	    //   var eventEnd = moment(eventPeriod.end);
+	    //   var periodStart = moment(containerPeriodStart);
+	    //
+	    //   if (recursOn) {
+	    //
+	    //     switch (recursOn) {
+	    //       case 'year':
+	    //         eventStart.set({
+	    //           year: periodStart.year()
+	    //         });
+	    //         break;
+	    //
+	    //       case 'month':
+	    //         eventStart.set({
+	    //           year: periodStart.year(),
+	    //           month: periodStart.month()
+	    //         });
+	    //         break;
+	    //
+	    //       default:
+	    //         throw new Error('Invalid value (' + recursOn + ') given for recurs on. Can only be year or month.');
+	    //     }
+	    //
+	    //     eventEnd = adjustEndDateFromStartDiff(eventPeriod.start, eventStart, eventEnd);
+	    //
+	    //   }
+	    //
+	    //   return {start: eventStart, end: eventEnd};
+	    //
+	    // }
+
+	    // function eventIsInPeriod(event, periodStart, periodEnd) {
+	    //
+	    //   periodStart = moment(periodStart);
+	    //   periodEnd = moment(periodEnd);
+	    //
+	    //   var eventPeriod = getRecurringEventPeriod({start: event.startsAt, end: event.endsAt || event.startsAt}, event.recursOn, periodStart);
+	    //   var eventStart = eventPeriod.start;
+	    //   var eventEnd = eventPeriod.end;
+	    //
+	    //   return (eventStart.isAfter(periodStart) && eventStart.isBefore(periodEnd)) ||
+	    //     (eventEnd.isAfter(periodStart) && eventEnd.isBefore(periodEnd)) ||
+	    //     (eventStart.isBefore(periodStart) && eventEnd.isAfter(periodEnd)) ||
+	    //     eventStart.isSame(periodStart) ||
+	    //     eventEnd.isSame(periodEnd);
+	    //
+	    // }
+
+	    // function filterEventsInPeriod(events, startPeriod, endPeriod) {
+	    //   return events.filter(function(event) {
+	    //     return eventIsInPeriod(event, startPeriod, endPeriod);
+	    //   });
+	    // }
+
+	    // function getEventsInPeriod(calendarDate, period, allEvents) {
+	    //   var startPeriod = moment(calendarDate).startOf(period);
+	    //   var endPeriod = moment(calendarDate).endOf(period);
+	    //   return filterEventsInPeriod(allEvents, startPeriod, endPeriod);
+	    // }
+
+	    // function getBadgeTotal(events) {
+	    //   return events.filter(function(event) {
+	    //     return event.incrementsBadgeTotal !== false;
+	    //   }).length;
+	    // }
+
+	    function getWeekDayNames() {
+	      var weekdays = [];
+	      var count = 0;
+	      while (count < 7) {
+	        weekdays.push(formatDate(moment().weekday(count++), calendarConfig.dateFormats.weekDay));
+	      }
+	      return weekdays;
+	    }
+
+	    // function getYearView(events, viewDate, cellModifier) {
+	    //
+	    //   var view = [];
+	    //   var eventsInPeriod = getEventsInPeriod(viewDate, 'year', events);
+	    //   var month = moment(viewDate).startOf('year');
+	    //   var count = 0;
+	    //   while (count < 12) {
+	    //     var startPeriod = month.clone();
+	    //     var endPeriod = startPeriod.clone().endOf('month');
+	    //     var periodEvents = filterEventsInPeriod(eventsInPeriod, startPeriod, endPeriod);
+	    //     var cell = {
+	    //       label: formatDate(startPeriod, calendarConfig.dateFormats.month),
+	    //       isToday: startPeriod.isSame(moment().startOf('month')),
+	    //       events: periodEvents,
+	    //       date: startPeriod,
+	    //       badgeTotal: getBadgeTotal(periodEvents)
+	    //     };
+	    //
+	    //     cellModifier({calendarCell: cell});
+	    //     view.push(cell);
+	    //     month.add(1, 'month');
+	    //     count++;
+	    //   }
+	    //
+	    //   return view;
+	    //
+	    // }
+
+	    function getMonthView(events, viewDate, cellModifier) {
+
+	      // hack required to work with the calendar-utils api
+	      events.forEach(function(event) {
+	        event.start = event.startsAt;
+	        event.end = event.endsAt;
+	      });
+
+	      var view = calendarUtils.getMonthView({
+	        events: events,
+	        viewDate: viewDate,
+	        weekStartsOn: moment().startOf('week').day()
+	      });
+
+	      view.days = view.days.map(function(day) {
+	        day.date = moment(day.date);
+	        day.label = day.date.date();
+	        // day.badgeTotal = getBadgeTotal(day.events);
+	        if (!calendarConfig.displayAllMonthEvents && !day.inMonth) {
+	          // day.events = [];
+	        }
+	        cellModifier({calendarCell: day});
+	        return day;
+	      });
+
+	      // remove hack
+	      events.forEach(function(event) {
+	        delete event.start;
+	        delete event.end;
+	      });
+
+	      // console.log(view);
+	      return view;
+
+	    }
+	    //
+	    // function getWeekView(events, viewDate) {
+	    //
+	    //   var days = calendarUtils.getWeekViewHeader({
+	    //     viewDate: viewDate,
+	    //     weekStartsOn: moment().startOf('week').day()
+	    //   }).map(function(day) {
+	    //     day.date = moment(day.date);
+	    //     day.weekDayLabel = formatDate(day.date, calendarConfig.dateFormats.weekDay);
+	    //     day.dayLabel = formatDate(day.date, calendarConfig.dateFormats.day);
+	    //     return day;
+	    //   });
+	    //
+	    //   var startOfWeek = moment(viewDate).startOf('week');
+	    //   var endOfWeek = moment(viewDate).endOf('week');
+	    //
+	    //   var eventRows = calendarUtils.getWeekView({
+	    //     viewDate: viewDate,
+	    //     weekStartsOn: moment().startOf('week').day(),
+	    //     events: filterEventsInPeriod(events, startOfWeek, endOfWeek).map(function(event) {
+	    //
+	    //       var weekViewStart = moment(startOfWeek).startOf('day');
+	    //
+	    //       var eventPeriod = getRecurringEventPeriod({
+	    //         start: moment(event.startsAt),
+	    //         end: moment(event.endsAt || event.startsAt)
+	    //       }, event.recursOn, weekViewStart);
+	    //
+	    //       eventPeriod.originalEvent = event;
+	    //
+	    //       return eventPeriod;
+	    //
+	    //     })
+	    //   }).map(function(eventRow) {
+	    //
+	    //     eventRow.row = eventRow.row.map(function(rowEvent) {
+	    //       rowEvent.event = rowEvent.event.originalEvent;
+	    //       return rowEvent;
+	    //     });
+	    //
+	    //     return eventRow;
+	    //
+	    //   });
+	    //
+	    //   return {days: days, eventRows: eventRows};
+	    //
+	    // }
+	    //
+	    // function getDayView(events, viewDate, dayViewStart, dayViewEnd, dayViewSplit, dayViewEventWidth) {
+	    //
+	    //   var dayStart = (dayViewStart || '00:00').split(':');
+	    //   var dayEnd = (dayViewEnd || '23:59').split(':');
+	    //
+	    //   var view = calendarUtils.getDayView({
+	    //     events: events.map(function(event) { // hack required to work with event API
+	    //       event.start = event.startsAt;
+	    //       event.end = event.endsAt;
+	    //       return event;
+	    //     }),
+	    //     viewDate: viewDate,
+	    //     hourSegments: 60 / dayViewSplit,
+	    //     dayStart: {
+	    //       hour: dayStart[0],
+	    //       minute: dayStart[1]
+	    //     },
+	    //     dayEnd: {
+	    //       hour: dayEnd[0],
+	    //       minute: dayEnd[1]
+	    //     },
+	    //     eventWidth: dayViewEventWidth ? +dayViewEventWidth : 150,
+	    //     segmentHeight: 30
+	    //   });
+	    //
+	    //   // remove hack to work with new event API
+	    //   events.forEach(function(event) {
+	    //     delete event.start;
+	    //     delete event.end;
+	    //   });
+	    //
+	    //   return view;
+	    //
+	    // }
+	    //
+	    // function getWeekViewWithTimes(events, viewDate, dayViewStart, dayViewEnd, dayViewSplit) {
+	    //   var weekView = getWeekView(events, viewDate);
+	    //   var newEvents = [];
+	    //   var flattenedEvents = [];
+	    //   weekView.eventRows.forEach(function(row) {
+	    //     row.row.forEach(function(eventRow) {
+	    //       flattenedEvents.push(eventRow.event);
+	    //     });
+	    //   });
+	    //   weekView.days.forEach(function(day) {
+	    //     var dayEvents = flattenedEvents.filter(function(event) {
+	    //       return moment(event.startsAt).startOf('day').isSame(moment(day.date).startOf('day'));
+	    //     });
+	    //     var newDayEvents = getDayView(
+	    //       dayEvents,
+	    //       day.date,
+	    //       dayViewStart,
+	    //       dayViewEnd,
+	    //       dayViewSplit
+	    //     ).events;
+	    //     newEvents = newEvents.concat(newDayEvents);
+	    //   });
+	    //   weekView.eventRows = [{
+	    //     row: newEvents.map(function(dayEvent) {
+	    //       var event = dayEvent.event;
+	    //       return {
+	    //         event: event,
+	    //         top: dayEvent.top,
+	    //         offset: calendarUtils.getWeekViewEventOffset(
+	    //           {start: event.startsAt, end: event.endsAt},
+	    //           moment(viewDate).startOf('week')
+	    //         )
+	    //       };
+	    //     })
+	    //   }];
+	    //   return weekView;
+	    // }
+	    //
+	    // function getDayViewHeight(dayViewStart, dayViewEnd, dayViewSplit) {
+	    //   var dayViewStartM = moment(dayViewStart || '00:00', 'HH:mm');
+	    //   var dayViewEndM = moment(dayViewEnd || '23:59', 'HH:mm');
+	    //   var hourHeight = (60 / dayViewSplit) * 30;
+	    //   return ((dayViewEndM.diff(dayViewStartM, 'minutes') / 60) * hourHeight) + 3;
+	    // }
+
+	    function loadTemplates() {
+
+	      var templatePromises = Object.keys(calendarConfig.templates).map(function(key) {
+	        var templateUrl = calendarConfig.templates[key];
+	        return $templateRequest(templateUrl);
+	      });
+
+	      return $q.all(templatePromises);
+
+	    }
+
+	    return {
+	      getWeekDayNames: getWeekDayNames,
+	      // getYearView: getYearView,
+	      getMonthView: getMonthView,
+	      // getWeekView: getWeekView,
+	      // getDayView: getDayView,
+	      // getWeekViewWithTimes: getWeekViewWithTimes,
+	      // getDayViewHeight: getDayViewHeight,
+	      adjustEndDateFromStartDiff: adjustEndDateFromStartDiff,
+	      formatDate: formatDate,
+	      loadTemplates: loadTemplates,
+	      // eventIsInPeriod: eventIsInPeriod //expose for testing only
+	    };
+
+	  }]);
+
+
+/***/ },
+/* 25 */
+/***/ function(module, exports, __webpack_require__) {
+
 	(function webpackUniversalModuleDefinition(root, factory) {
 		if(true)
-			module.exports = factory(__webpack_require__(18), __webpack_require__(21), __webpack_require__(22), __webpack_require__(23), __webpack_require__(27), __webpack_require__(29), __webpack_require__(30), __webpack_require__(31), __webpack_require__(32), __webpack_require__(33), __webpack_require__(34), __webpack_require__(35), __webpack_require__(36), __webpack_require__(38), __webpack_require__(39), __webpack_require__(25), __webpack_require__(40), __webpack_require__(41), __webpack_require__(42));
+			module.exports = factory(__webpack_require__(26), __webpack_require__(29), __webpack_require__(30), __webpack_require__(31), __webpack_require__(35), __webpack_require__(37), __webpack_require__(38), __webpack_require__(39), __webpack_require__(40), __webpack_require__(41), __webpack_require__(42), __webpack_require__(43), __webpack_require__(44), __webpack_require__(46), __webpack_require__(47), __webpack_require__(33), __webpack_require__(48), __webpack_require__(49), __webpack_require__(50));
 		else if(typeof define === 'function' && define.amd)
 			define([, , , , , , , , , , , , , , , , , , ], factory);
 		else if(typeof exports === 'object')
@@ -1112,10 +1662,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	;
 
 /***/ },
-/* 18 */
+/* 26 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Day Helpers
@@ -1143,10 +1693,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 19 */
+/* 27 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isDate = __webpack_require__(20)
+	var isDate = __webpack_require__(28)
 
 	var MILLISECONDS_IN_HOUR = 3600000
 	var MILLISECONDS_IN_MINUTE = 60000
@@ -1459,7 +2009,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 20 */
+/* 28 */
 /***/ function(module, exports) {
 
 	/**
@@ -1485,10 +2035,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 21 */
+/* 29 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Hour Helpers
@@ -1516,10 +2066,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 22 */
+/* 30 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Minute Helpers
@@ -1547,12 +2097,12 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 23 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
-	var differenceInCalendarDays = __webpack_require__(24)
-	var compareAsc = __webpack_require__(26)
+	var parse = __webpack_require__(27)
+	var differenceInCalendarDays = __webpack_require__(32)
+	var compareAsc = __webpack_require__(34)
 
 	/**
 	 * @category Day Helpers
@@ -1592,10 +2142,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 24 */
+/* 32 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var startOfDay = __webpack_require__(25)
+	var startOfDay = __webpack_require__(33)
 
 	var MILLISECONDS_IN_MINUTE = 60000
 	var MILLISECONDS_IN_DAY = 86400000
@@ -1639,10 +2189,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 25 */
+/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Day Helpers
@@ -1670,10 +2220,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 26 */
+/* 34 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Common Helpers
@@ -1727,10 +2277,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 27 */
+/* 35 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var differenceInMilliseconds = __webpack_require__(28)
+	var differenceInMilliseconds = __webpack_require__(36)
 
 	var MILLISECONDS_IN_MINUTE = 60000
 
@@ -1762,10 +2312,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 28 */
+/* 36 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Millisecond Helpers
@@ -1797,10 +2347,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 29 */
+/* 37 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var differenceInMilliseconds = __webpack_require__(28)
+	var differenceInMilliseconds = __webpack_require__(36)
 
 	/**
 	 * @category Second Helpers
@@ -1831,10 +2381,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 30 */
+/* 38 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Day Helpers
@@ -1862,10 +2412,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 31 */
+/* 39 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Month Helpers
@@ -1895,10 +2445,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 32 */
+/* 40 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Week Helpers
@@ -1939,10 +2489,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 33 */
+/* 41 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Weekday Helpers
@@ -1969,10 +2519,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 34 */
+/* 42 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var startOfDay = __webpack_require__(25)
+	var startOfDay = __webpack_require__(33)
 
 	/**
 	 * @category Day Helpers
@@ -2004,10 +2554,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 35 */
+/* 43 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Month Helpers
@@ -2039,10 +2589,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 36 */
+/* 44 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var startOfSecond = __webpack_require__(37)
+	var startOfSecond = __webpack_require__(45)
 
 	/**
 	 * @category Second Helpers
@@ -2075,10 +2625,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 37 */
+/* 45 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Second Helpers
@@ -2106,10 +2656,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 38 */
+/* 46 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Hour Helpers
@@ -2137,10 +2687,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 39 */
+/* 47 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Minute Helpers
@@ -2168,10 +2718,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 40 */
+/* 48 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Minute Helpers
@@ -2199,10 +2749,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 41 */
+/* 49 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Month Helpers
@@ -2231,10 +2781,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 42 */
+/* 50 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parse = __webpack_require__(19)
+	var parse = __webpack_require__(27)
 
 	/**
 	 * @category Week Helpers
@@ -2275,1668 +2825,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 43 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .controller('MwlCalendarMonthCtrl', ["$scope", "moment", "calendarHelper", "calendarConfig", "calendarEventTitle", function($scope, moment, calendarHelper, calendarConfig, calendarEventTitle) {
-
-	    var vm = this;
-	    vm.calendarConfig = calendarConfig;
-	    vm.calendarEventTitle = calendarEventTitle;
-	    vm.openRowIndex = null;
-
-	    function toggleCell() {
-	      vm.openRowIndex = null;
-	      vm.openDayIndex = null;
-
-	      if (vm.cellIsOpen && vm.view) {
-	        vm.view.forEach(function(day, dayIndex) {
-	          if (moment(vm.viewDate).startOf('day').isSame(day.date)) {
-	            vm.openDayIndex = dayIndex;
-	            vm.openRowIndex = Math.floor(dayIndex / 7);
-	          }
-	        });
-	      }
-	    }
-
-	    $scope.$on('calendar.refreshView', function() {
-
-	      vm.weekDays = calendarHelper.getWeekDayNames();
-
-	      var monthView = calendarHelper.getMonthView(vm.events, vm.viewDate, vm.cellModifier);
-	      vm.view = monthView.days;
-	      vm.monthOffsets = monthView.rowOffsets;
-
-	      if (vm.cellAutoOpenDisabled) {
-	        toggleCell();
-	      } else if (!vm.cellAutoOpenDisabled && vm.cellIsOpen && vm.openRowIndex === null) {
-	        //Auto open the calendar to the current day if set
-	        vm.openDayIndex = null;
-	        vm.view.forEach(function(day) {
-	          if (day.inMonth && moment(vm.viewDate).startOf('day').isSame(day.date)) {
-	            vm.dayClicked(day, true);
-	          }
-	        });
-	      }
-
-	    });
-
-	    if (vm.cellAutoOpenDisabled) {
-	      $scope.$watchGroup([
-	        'vm.cellIsOpen',
-	        'vm.viewDate'
-	      ], toggleCell);
-	    }
-
-	    vm.dayClicked = function(day, dayClickedFirstRun, $event) {
-
-	      if (!dayClickedFirstRun) {
-	        vm.onTimespanClick({
-	          calendarDate: day.date.toDate(),
-	          calendarCell: day,
-	          $event: $event
-	        });
-	        if ($event && $event.defaultPrevented) {
-	          return;
-	        }
-	      }
-
-	      if (!vm.cellAutoOpenDisabled) {
-	        vm.openRowIndex = null;
-	        var dayIndex = vm.view.indexOf(day);
-	        if (dayIndex === vm.openDayIndex) { //the day has been clicked and is already open
-	          vm.openDayIndex = null; //close the open day
-	          vm.cellIsOpen = false;
-	        } else {
-	          vm.openDayIndex = dayIndex;
-	          vm.openRowIndex = Math.floor(dayIndex / 7);
-	          vm.cellIsOpen = true;
-	        }
-	      }
-
-	    };
-
-	    vm.highlightEvent = function(event, shouldAddClass) {
-
-	      vm.view.forEach(function(day) {
-	        delete day.highlightClass;
-	        delete day.backgroundColor;
-	        if (shouldAddClass) {
-	          var dayContainsEvent = day.events.indexOf(event) > -1;
-	          if (dayContainsEvent) {
-	            day.backgroundColor = event.color ? event.color.secondary : '';
-	          }
-	        }
-	      });
-
-	    };
-
-	    vm.handleEventDrop = function(event, newDayDate, draggedFromDate) {
-
-	      var newStart = moment(event.startsAt)
-	        .date(moment(newDayDate).date())
-	        .month(moment(newDayDate).month())
-	        .year(moment(newDayDate).year());
-
-	      var newEnd = calendarHelper.adjustEndDateFromStartDiff(event.startsAt, newStart, event.endsAt);
-
-	      vm.onEventTimesChanged({
-	        calendarEvent: event,
-	        calendarDate: newDayDate,
-	        calendarNewEventStart: newStart.toDate(),
-	        calendarNewEventEnd: newEnd ? newEnd.toDate() : null,
-	        calendarDraggedFromDate: draggedFromDate
-	      });
-	    };
-
-	    vm.getWeekNumberLabel = function(day) {
-	      var weekNumber = day.date.clone().add(1, 'day').isoWeek();
-	      if (typeof calendarConfig.i18nStrings.weekNumber === 'function') {
-	        return calendarConfig.i18nStrings.weekNumber({weekNumber: weekNumber});
-	      } else {
-	        return calendarConfig.i18nStrings.weekNumber.replace('{week}', weekNumber);
-	      }
-	    };
-
-	    vm.onDragSelectStart = function(day) {
-	      if (!vm.dateRangeSelect) {
-	        vm.dateRangeSelect = {
-	          startDate: day.date,
-	          endDate: day.date
-	        };
-	      }
-	    };
-
-	    vm.onDragSelectMove = function(day) {
-	      if (vm.dateRangeSelect) {
-	        vm.dateRangeSelect.endDate = day.date;
-	      }
-	    };
-
-	    vm.onDragSelectEnd = function(day) {
-	      vm.dateRangeSelect.endDate = day.date;
-	      if (vm.dateRangeSelect.endDate > vm.dateRangeSelect.startDate) {
-	        vm.onDateRangeSelect({
-	          calendarRangeStartDate: vm.dateRangeSelect.startDate.clone().startOf('day').toDate(),
-	          calendarRangeEndDate: vm.dateRangeSelect.endDate.clone().endOf('day').toDate()
-	        });
-	      }
-	      delete vm.dateRangeSelect;
-	    };
-
-	  }])
-	  .directive('mwlCalendarMonth', function() {
-
-	    return {
-	      template: '<div mwl-dynamic-directive-template name="calendarMonthView" overrides="vm.customTemplateUrls"></div>',
-	      restrict: 'E',
-	      require: '^mwlCalendar',
-	      scope: {
-	        events: '=',
-	        viewDate: '=',
-	        onEventClick: '=',
-	        onEventTimesChanged: '=',
-	        onDateRangeSelect: '=',
-	        cellIsOpen: '=',
-	        cellAutoOpenDisabled: '=',
-	        onTimespanClick: '=',
-	        cellModifier: '=',
-	        slideBoxDisabled: '=',
-	        customTemplateUrls: '=?',
-	        templateScope: '=',
-	      },
-	      controller: 'MwlCalendarMonthCtrl as vm',
-	      link: function(scope, element, attrs, calendarCtrl) {
-	        scope.vm.calendarCtrl = calendarCtrl;
-	      },
-	      bindToController: true
-	    };
-
-	  });
-
-
-/***/ },
-/* 44 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .controller('MwlCalendarSlideBoxCtrl', ["$scope", "$timeout", "calendarConfig", "calendarEventTitle", function($scope, $timeout, calendarConfig, calendarEventTitle) {
-
-	    var vm = this;
-	    vm.calendarConfig = calendarConfig;
-	    vm.calendarEventTitle = calendarEventTitle;
-
-	    vm.isCollapsed = true;
-	    $scope.$watch('vm.isOpen', function(isOpen) {
-	      //events must be populated first to set the element height before animation will work
-	      $timeout(function() {
-	        vm.isCollapsed = !isOpen;
-	      });
-	    });
-
-	  }])
-	  .directive('mwlCalendarSlideBox', function() {
-
-	    return {
-	      restrict: 'E',
-	      template: '<div mwl-dynamic-directive-template name="calendarSlideBox" overrides="vm.customTemplateUrls"></div>',
-	      replace: true,
-	      controller: 'MwlCalendarSlideBoxCtrl as vm',
-	      require: ['^?mwlCalendarMonth', '^?mwlCalendarYear'],
-	      link: function(scope, elm, attrs, ctrls) {
-	        scope.isMonthView = !!ctrls[0];
-	        scope.isYearView = !!ctrls[1];
-	      },
-	      scope: {
-	        isOpen: '=',
-	        events: '=',
-	        onEventClick: '=',
-	        cell: '=',
-	        customTemplateUrls: '=?',
-	        templateScope: '='
-	      },
-	      bindToController: true
-	    };
-
-	  });
-
-
-/***/ },
-/* 45 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .controller('MwlCalendarWeekCtrl', ["$scope", "moment", "calendarHelper", "calendarConfig", "calendarEventTitle", function($scope, moment, calendarHelper, calendarConfig, calendarEventTitle) {
-
-	    var vm = this;
-
-	    vm.showTimes = calendarConfig.showTimesOnWeekView;
-	    vm.calendarEventTitle = calendarEventTitle;
-
-	    $scope.$on('calendar.refreshView', function() {
-	      vm.dayViewSplit = vm.dayViewSplit || 30;
-	      vm.dayViewHeight = calendarHelper.getDayViewHeight(
-	        vm.dayViewStart,
-	        vm.dayViewEnd,
-	        vm.dayViewSplit
-	      );
-	      if (vm.showTimes) {
-	        vm.view = calendarHelper.getWeekViewWithTimes(
-	          vm.events,
-	          vm.viewDate,
-	          vm.dayViewStart,
-	          vm.dayViewEnd,
-	          vm.dayViewSplit
-	        );
-	      } else {
-	        vm.view = calendarHelper.getWeekView(vm.events, vm.viewDate);
-	      }
-	    });
-
-	    vm.weekDragged = function(event, daysDiff, minuteChunksMoved) {
-
-	      var newStart = moment(event.startsAt).add(daysDiff, 'days');
-	      var newEnd = moment(event.endsAt).add(daysDiff, 'days');
-
-	      if (minuteChunksMoved) {
-	        var minutesDiff = minuteChunksMoved * vm.dayViewSplit;
-	        newStart = newStart.add(minutesDiff, 'minutes');
-	        newEnd = newEnd.add(minutesDiff, 'minutes');
-	      }
-
-	      delete event.tempStartsAt;
-
-	      vm.onEventTimesChanged({
-	        calendarEvent: event,
-	        calendarNewEventStart: newStart.toDate(),
-	        calendarNewEventEnd: event.endsAt ? newEnd.toDate() : null
-	      });
-	    };
-
-	    vm.eventDropped = function(event, date) {
-	      var daysDiff = moment(date).diff(moment(event.startsAt), 'days');
-	      vm.weekDragged(event, daysDiff);
-	    };
-
-	    vm.weekResized = function(event, edge, daysDiff) {
-
-	      var start = moment(event.startsAt);
-	      var end = moment(event.endsAt);
-	      if (edge === 'start') {
-	        start.add(daysDiff, 'days');
-	      } else {
-	        end.add(daysDiff, 'days');
-	      }
-
-	      vm.onEventTimesChanged({
-	        calendarEvent: event,
-	        calendarNewEventStart: start.toDate(),
-	        calendarNewEventEnd: end.toDate()
-	      });
-
-	    };
-
-	    vm.tempTimeChanged = function(event, minuteChunksMoved) {
-	      var minutesDiff = minuteChunksMoved * vm.dayViewSplit;
-	      event.tempStartsAt = moment(event.startsAt).add(minutesDiff, 'minutes').toDate();
-	    };
-
-	  }])
-	  .directive('mwlCalendarWeek', function() {
-
-	    return {
-	      template: '<div mwl-dynamic-directive-template name="calendarWeekView" overrides="vm.customTemplateUrls"></div>',
-	      restrict: 'E',
-	      require: '^mwlCalendar',
-	      scope: {
-	        events: '=',
-	        viewDate: '=',
-	        onEventClick: '=',
-	        onEventTimesChanged: '=',
-	        dayViewStart: '=',
-	        dayViewEnd: '=',
-	        dayViewSplit: '=',
-	        dayViewEventChunkSize: '=',
-	        onTimespanClick: '=',
-	        onDateRangeSelect: '=',
-	        customTemplateUrls: '=?',
-	        cellModifier: '=',
-	        templateScope: '='
-	      },
-	      controller: 'MwlCalendarWeekCtrl as vm',
-	      link: function(scope, element, attrs, calendarCtrl) {
-	        scope.vm.calendarCtrl = calendarCtrl;
-	      },
-	      bindToController: true
-	    };
-
-	  });
-
-
-/***/ },
-/* 46 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .controller('MwlCalendarYearCtrl', ["$scope", "moment", "calendarHelper", function($scope, moment, calendarHelper) {
-
-	    var vm = this;
-	    vm.openMonthIndex = null;
-
-	    function toggleCell() {
-	      vm.openRowIndex = null;
-	      vm.openMonthIndex = null;
-
-	      if (vm.cellIsOpen && vm.view) {
-	        vm.view.forEach(function(month, monthIndex) {
-	          if (moment(vm.viewDate).startOf('month').isSame(month.date)) {
-	            vm.openMonthIndex = monthIndex;
-	            vm.openRowIndex = Math.floor(monthIndex / 4);
-	          }
-	        });
-	      }
-	    }
-
-	    $scope.$on('calendar.refreshView', function() {
-	      vm.view = calendarHelper.getYearView(vm.events, vm.viewDate, vm.cellModifier);
-
-	      if (vm.cellAutoOpenDisabled) {
-	        toggleCell();
-	      } else if (!vm.cellAutoOpenDisabled && vm.cellIsOpen && vm.openMonthIndex === null) {
-	        //Auto open the calendar to the current day if set
-	        vm.openMonthIndex = null;
-	        vm.view.forEach(function(month) {
-	          if (moment(vm.viewDate).startOf('month').isSame(month.date)) {
-	            vm.monthClicked(month, true);
-	          }
-	        });
-	      }
-
-	    });
-
-	    if (vm.cellAutoOpenDisabled) {
-	      $scope.$watchGroup([
-	        'vm.cellIsOpen',
-	        'vm.viewDate'
-	      ], toggleCell);
-	    }
-
-	    vm.monthClicked = function(month, monthClickedFirstRun, $event) {
-
-	      if (!monthClickedFirstRun) {
-	        vm.onTimespanClick({
-	          calendarDate: month.date.toDate(),
-	          calendarCell: month,
-	          $event: $event
-	        });
-	        if ($event && $event.defaultPrevented) {
-	          return;
-	        }
-	      }
-
-	      if (!vm.cellAutoOpenDisabled) {
-	        vm.openRowIndex = null;
-	        var monthIndex = vm.view.indexOf(month);
-	        if (monthIndex === vm.openMonthIndex) { //the month has been clicked and is already open
-	          vm.openMonthIndex = null; //close the open month
-	          vm.cellIsOpen = false;
-	        } else {
-	          vm.openMonthIndex = monthIndex;
-	          vm.openRowIndex = Math.floor(monthIndex / 4);
-	          vm.cellIsOpen = true;
-	        }
-	      }
-
-	    };
-
-	    vm.handleEventDrop = function(event, newMonthDate) {
-	      var newStart = moment(event.startsAt)
-	        .month(moment(newMonthDate).month())
-	        .year(moment(newMonthDate).year());
-	      var newEnd = calendarHelper.adjustEndDateFromStartDiff(event.startsAt, newStart, event.endsAt);
-
-	      vm.onEventTimesChanged({
-	        calendarEvent: event,
-	        calendarDate: newMonthDate,
-	        calendarNewEventStart: newStart.toDate(),
-	        calendarNewEventEnd: newEnd ? newEnd.toDate() : null
-	      });
-	    };
-
-	  }])
-	  .directive('mwlCalendarYear', function() {
-
-	    return {
-	      template: '<div mwl-dynamic-directive-template name="calendarYearView" overrides="vm.customTemplateUrls"></div>',
-	      restrict: 'E',
-	      require: '^mwlCalendar',
-	      scope: {
-	        events: '=',
-	        viewDate: '=',
-	        onEventClick: '=',
-	        onEventTimesChanged: '=',
-	        cellIsOpen: '=',
-	        cellAutoOpenDisabled: '=',
-	        onTimespanClick: '=',
-	        cellModifier: '=',
-	        slideBoxDisabled: '=',
-	        customTemplateUrls: '=?',
-	        templateScope: '='
-	      },
-	      controller: 'MwlCalendarYearCtrl as vm',
-	      link: function(scope, element, attrs, calendarCtrl) {
-	        scope.vm.calendarCtrl = calendarCtrl;
-	      },
-	      bindToController: true
-	    };
-
-	  });
-
-
-/***/ },
-/* 47 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .controller('MwlCollapseFallbackCtrl', ["$scope", "$attrs", "$element", function($scope, $attrs, $element) {
-
-	    $scope.$watch($attrs.mwlCollapseFallback, function(shouldCollapse) {
-	      if (shouldCollapse) {
-	        $element.addClass('ng-hide');
-	      } else {
-	        $element.removeClass('ng-hide');
-	      }
-	    });
-
-	  }])
-	  .directive('mwlCollapseFallback', ["$injector", function($injector) {
-
-	    if ($injector.has('uibCollapseDirective')) {
-	      return {};
-	    }
-
-	    return {
-	      restrict: 'A',
-	      controller: 'MwlCollapseFallbackCtrl'
-	    };
-
-	  }]);
-
-
-/***/ },
-/* 48 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .controller('MwlDateModifierCtrl', ["$element", "$attrs", "$scope", "moment", function($element, $attrs, $scope, moment) {
-
-	    var vm = this;
-
-	    function onClick() {
-	      if (angular.isDefined($attrs.setToToday)) {
-	        vm.date = new Date();
-	      } else if (angular.isDefined($attrs.increment)) {
-	        vm.date = moment(vm.date).add(1, vm.increment).toDate();
-	      } else if (angular.isDefined($attrs.decrement)) {
-	        vm.date = moment(vm.date).subtract(1, vm.decrement).toDate();
-	      }
-	      $scope.$apply();
-	    }
-
-	    $element.bind('click', onClick);
-
-	    $scope.$on('$destroy', function() {
-	      $element.unbind('click', onClick);
-	    });
-
-	  }])
-	  .directive('mwlDateModifier', function() {
-
-	    return {
-	      restrict: 'A',
-	      controller: 'MwlDateModifierCtrl as vm',
-	      scope: {
-	        date: '=',
-	        increment: '=',
-	        decrement: '='
-	      },
-	      bindToController: true
-	    };
-
-	  });
-
-
-/***/ },
-/* 49 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .controller('MwlDragSelectCtrl', ["$scope", "$element", "$parse", "$attrs", function($scope, $element, $parse, $attrs) {
-
-	    function handleMouseEvent(callbackName) {
-	      return function(event) {
-	        if (callbackName) {
-	          $parse(callbackName)($scope);
-	          $scope.$apply();
-	        }
-	        event.preventDefault();
-	      };
-	    }
-
-	    var onMouseDown = handleMouseEvent($attrs.onDragSelectStart);
-	    var onMouseMove = handleMouseEvent($attrs.onDragSelectMove);
-	    var onMouseUp = handleMouseEvent($attrs.onDragSelectEnd);
-
-	    function enableMouseListeners() {
-	      $element.on('mousedown', onMouseDown);
-	      $element.on('mousemove', onMouseMove);
-	      $element.on('mouseup', onMouseUp);
-	    }
-
-	    function disableMouseListeners() {
-	      $element.off('mousedown', onMouseDown);
-	      $element.off('mousemove', onMouseMove);
-	      $element.off('mouseup', onMouseUp);
-	    }
-
-	    $scope.$watch($attrs.mwlDragSelect, function(isEnabled) {
-	      if (isEnabled) {
-	        enableMouseListeners();
-	      } else {
-	        disableMouseListeners();
-	      }
-	    });
-
-	    $scope.$on('$destroy', function() {
-	      disableMouseListeners();
-	    });
-
-	  }])
-	  .directive('mwlDragSelect', function() {
-
-	    return {
-	      restrict: 'A',
-	      controller: 'MwlDragSelectCtrl'
-	    };
-
-	  });
-
-
-/***/ },
-/* 50 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .controller('MwlDraggableCtrl', ["$element", "$scope", "$window", "$parse", "$attrs", "$timeout", "interact", function($element, $scope, $window, $parse, $attrs, $timeout, interact) {
-
-	    if (!interact) {
-	      return;
-	    }
-
-	    var snap, snapGridDimensions;
-	    if ($attrs.snapGrid) {
-	      snapGridDimensions = $parse($attrs.snapGrid)($scope);
-	      snap = {
-	        targets: [
-	          interact.createSnapGrid(snapGridDimensions)
-	        ]
-	      };
-	    }
-
-	    function translateElement(elm, transformValue) {
-	      return elm
-	        .css('-ms-transform', transformValue)
-	        .css('-webkit-transform', transformValue)
-	        .css('transform', transformValue);
-	    }
-
-	    interact($element[0]).draggable({
-	      snap: snap,
-	      onstart: function(event) {
-	        angular.element(event.target).addClass('dragging-active');
-	        event.target.dropData = $parse($attrs.dropData)($scope);
-	        event.target.style.pointerEvents = 'none';
-	        if ($attrs.onDragStart) {
-	          $parse($attrs.onDragStart)($scope);
-	          $scope.$apply();
-	        }
-	      },
-	      onmove: function(event) {
-
-	        var elm = angular.element(event.target);
-	        var x = (parseFloat(elm.attr('data-x')) || 0) + (event.dx || 0);
-	        var y = (parseFloat(elm.attr('data-y')) || 0) + (event.dy || 0);
-
-	        switch ($parse($attrs.axis)($scope)) {
-	          case 'x':
-	            y = 0;
-	            break;
-
-	          case 'y':
-	            x = 0;
-	            break;
-
-	          default:
-	        }
-
-	        if ($window.getComputedStyle(elm[0]).position === 'static') {
-	          elm.css('position', 'relative');
-	        }
-
-	        translateElement(elm, 'translate(' + x + 'px, ' + y + 'px)')
-	          .css('z-index', 50)
-	          .attr('data-x', x)
-	          .attr('data-y', y);
-
-	        if ($attrs.onDrag) {
-	          $parse($attrs.onDrag)($scope, {x: x, y: y});
-	          $scope.$apply();
-	        }
-
-	      },
-	      onend: function(event) {
-
-	        var elm = angular.element(event.target);
-	        var x = elm.attr('data-x');
-	        var y = elm.attr('data-y');
-
-	        event.target.style.pointerEvents = 'auto';
-	        if ($attrs.onDragEnd) {
-	          $parse($attrs.onDragEnd)($scope, {x: x, y: y});
-	          $scope.$apply();
-	        }
-
-	        $timeout(function() {
-	          translateElement(elm, '')
-	            .css('z-index', 'auto')
-	            .removeAttr('data-x')
-	            .removeAttr('data-y')
-	            .removeClass('dragging-active');
-	        });
-
-	      }
-	    });
-
-	    $scope.$watch($attrs.mwlDraggable, function(enabled) {
-	      interact($element[0]).draggable({
-	        enabled: enabled
-	      });
-	    });
-
-	    $scope.$on('$destroy', function() {
-	      interact($element[0]).unset();
-	    });
-
-	  }])
-	  .directive('mwlDraggable', function() {
-
-	    return {
-	      restrict: 'A',
-	      controller: 'MwlDraggableCtrl'
-	    };
-
-	  });
-
-
-/***/ },
 /* 51 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .controller('MwlDroppableCtrl', ["$element", "$scope", "$parse", "$attrs", "interact", function($element, $scope, $parse, $attrs, interact) {
-
-	    if (!interact) {
-	      return;
-	    }
-
-	    var DROP_ACTIVE_CLASS = $attrs.dropActiveClass || 'drop-active';
-
-	    interact($element[0]).dropzone({
-	      ondragenter: function(event) {
-	        angular.element(event.target).addClass(DROP_ACTIVE_CLASS);
-	      },
-	      ondragleave: function(event) {
-	        angular.element(event.target).removeClass(DROP_ACTIVE_CLASS);
-	      },
-	      ondropdeactivate: function(event) {
-	        angular.element(event.target).removeClass(DROP_ACTIVE_CLASS);
-	      },
-	      ondrop: function(event) {
-	        if (event.relatedTarget.dropData) {
-	          $parse($attrs.onDrop)($scope, {dropData: event.relatedTarget.dropData});
-	          $scope.$apply();
-	        }
-	      }
-	    });
-
-	    $scope.$on('$destroy', function() {
-	      interact($element[0]).unset();
-	    });
-
-	  }])
-	  .directive('mwlDroppable', function() {
-
-	    return {
-	      restrict: 'A',
-	      controller: 'MwlDroppableCtrl'
-	    };
-
-	  });
-
-
-/***/ },
-/* 52 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .controller('MwlDynamicDirectiveTemplateCtrl', ["$compile", "$scope", "$attrs", "$element", "$templateCache", "$log", "calendarConfig", function($compile, $scope, $attrs, $element, $templateCache, $log, calendarConfig) {
-
-	    $scope.$watch($attrs.overrides, function(overrides) {
-
-	      var templateName = calendarConfig.templates[$attrs.name];
-	      if (
-	        overrides &&
-	        angular.isObject(overrides) &&
-	        overrides[$attrs.name]
-	      ) {
-	        if ($templateCache.get(overrides[$attrs.name])) {
-	          templateName = overrides[$attrs.name];
-	        } else {
-	          $log.warn('Bootstrap Calendar', 'The custom template for ' + overrides[$attrs.name] +
-	            ' was not found in the template cache. Please ensure it is pre-loaded via a script tag ' +
-	            '<script type="text/ng-template" id="' + overrides[$attrs.name] + '">Custom template content</script> or ' +
-	            'via a tool such as https://www.npmjs.com/package/gulp-angular-templatecache');
-	        }
-	      }
-	      var template = $templateCache.get(templateName);
-	      $element.html(template);
-	      $compile($element.contents())($scope);
-
-	    });
-
-	  }])
-	  .directive('mwlDynamicDirectiveTemplate', function() {
-
-	    return {
-	      restrict: 'A',
-	      controller: 'MwlDynamicDirectiveTemplateCtrl'
-	    };
-
-	  });
-
-
-/***/ },
-/* 53 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .controller('MwlElementDimensionsCtrl', ["$element", "$scope", "$parse", "$attrs", "$window", function($element, $scope, $parse, $attrs, $window) {
-
-	    function setDimensions() {
-	      $parse($attrs.mwlElementDimensions).assign($scope, {
-	        width: $element[0].offsetWidth - 1,
-	        height: $element[0].offsetHeight
-	      });
-	      $scope.$applyAsync();
-	    }
-
-	    var win = angular.element($window);
-
-	    win.bind('resize', setDimensions);
-
-	    setDimensions();
-
-	    $scope.$on('$destroy', function() {
-	      win.unbind('resize', setDimensions);
-	    });
-
-	  }])
-	  .directive('mwlElementDimensions', function() {
-
-	    return {
-	      restrict: 'A',
-	      controller: 'MwlElementDimensionsCtrl'
-	    };
-
-	  });
-
-
-/***/ },
-/* 54 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .controller('MwlResizableCtrl', ["$element", "$scope", "$parse", "$attrs", "$timeout", "interact", function($element, $scope, $parse, $attrs, $timeout, interact) {
-
-	    if (!interact) {
-	      return;
-	    }
-
-	    var snap, snapGridDimensions;
-	    if ($attrs.snapGrid) {
-	      snapGridDimensions = $parse($attrs.snapGrid)($scope);
-	      snap = {
-	        targets: [
-	          interact.createSnapGrid(snapGridDimensions)
-	        ]
-	      };
-	    }
-
-	    var originalDimensions = {};
-	    var originalDimensionsStyle = {};
-	    var resizeEdge;
-
-	    function getUnitsResized(edge, elm) {
-	      var unitsResized = {};
-	      unitsResized.edge = edge;
-	      if (edge === 'start') {
-	        unitsResized.x = elm.data('x');
-	        unitsResized.y = elm.data('y');
-	      } else if (edge === 'end') {
-	        unitsResized.x = parseFloat(elm.css('width').replace('px', '')) - originalDimensions.width;
-	        unitsResized.y = parseFloat(elm.css('height').replace('px', '')) - originalDimensions.height;
-	      }
-	      return unitsResized;
-	    }
-
-	    interact($element[0]).resizable({
-	      edges: $parse($attrs.resizeEdges)($scope),
-	      snap: snap,
-	      onstart: function(event) {
-
-	        resizeEdge = 'end';
-	        var elm = angular.element(event.target);
-	        originalDimensions.height = elm[0].offsetHeight;
-	        originalDimensions.width = elm[0].offsetWidth;
-	        originalDimensionsStyle.height = elm.css('height');
-	        originalDimensionsStyle.width = elm.css('width');
-
-	      },
-	      onmove: function(event) {
-
-	        if (event.rect.width > 0 && event.rect.height > 0) {
-	          var elm = angular.element(event.target);
-	          var x = parseFloat(elm.data('x') || 0);
-	          var y = parseFloat(elm.data('y') || 0);
-
-	          elm.css({
-	            width: event.rect.width + 'px',
-	            height: event.rect.height + 'px'
-	          });
-
-	          // translate when resizing from top or left edges
-	          x += event.deltaRect.left;
-	          y += event.deltaRect.top;
-
-	          elm.css('transform', 'translate(' + x + 'px,' + y + 'px)');
-
-	          elm.data('x', x);
-	          elm.data('y', y);
-
-	          if (event.deltaRect.left !== 0 || event.deltaRect.top !== 0) {
-	            resizeEdge = 'start';
-	          }
-
-	          if ($attrs.onResize) {
-	            $parse($attrs.onResize)($scope, getUnitsResized(resizeEdge, elm));
-	            $scope.$apply();
-	          }
-
-	        }
-
-	      },
-	      onend: function(event) {
-
-	        var elm = angular.element(event.target);
-	        var unitsResized = getUnitsResized(resizeEdge, elm);
-
-	        $timeout(function() {
-	          elm
-	            .data('x', null)
-	            .data('y', null)
-	            .css({
-	              transform: '',
-	              width: originalDimensionsStyle.width,
-	              height: originalDimensionsStyle.height
-	            });
-	        });
-
-	        if ($attrs.onResizeEnd) {
-	          $parse($attrs.onResizeEnd)($scope, unitsResized);
-	          $scope.$apply();
-	        }
-
-	      }
-	    });
-
-	    $scope.$watch($attrs.mwlResizable, function(enabled) {
-	      interact($element[0]).resizable({
-	        enabled: enabled
-	      });
-	    });
-
-	    $scope.$on('$destroy', function() {
-	      interact($element[0]).unset();
-	    });
-
-	  }])
-	  .directive('mwlResizable', function() {
-
-	    return {
-	      restrict: 'A',
-	      controller: 'MwlResizableCtrl'
-	    };
-
-	  });
-
-
-/***/ },
-/* 55 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var map = {
-		"./calendarDate.js": 56,
-		"./calendarLimitTo.js": 57,
-		"./calendarTruncateEventTitle.js": 58,
-		"./calendarTrustAsHtml.js": 59
-	};
-	function webpackContext(req) {
-		return __webpack_require__(webpackContextResolve(req));
-	};
-	function webpackContextResolve(req) {
-		return map[req] || (function() { throw new Error("Cannot find module '" + req + "'.") }());
-	};
-	webpackContext.keys = function webpackContextKeys() {
-		return Object.keys(map);
-	};
-	webpackContext.resolve = webpackContextResolve;
-	module.exports = webpackContext;
-	webpackContext.id = 55;
-
-
-/***/ },
-/* 56 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .filter('calendarDate', ["calendarHelper", "calendarConfig", function(calendarHelper, calendarConfig) {
-
-	    function calendarDate(date, format, getFromConfig) {
-
-	      if (getFromConfig === true) {
-	        format = calendarConfig.dateFormats[format];
-	      }
-
-	      return calendarHelper.formatDate(date, format);
-
-	    }
-
-	    // This is stateful because the locale can change as well
-	    // as calendarConfig.dateFormats which would change the value outside of this filter
-	    calendarDate.$stateful = true;
-
-	    return calendarDate;
-
-	  }]);
-
-
-/***/ },
-/* 57 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .filter('calendarLimitTo', ["limitToFilter", function(limitToFilter) {
-
-	    if (angular.version.minor >= 4) { //1.4+ supports the begin attribute
-	      return limitToFilter;
-	    }
-
-	    //Copied from the angular source. Only 1.4 has the begin functionality.
-	    return function(input, limit, begin) {
-	      if (Math.abs(Number(limit)) === Infinity) {
-	        limit = Number(limit);
-	      } else {
-	        limit = parseInt(limit);
-	      }
-	      if (isNaN(limit)) {
-	        return input;
-	      }
-
-	      if (angular.isNumber(input)) {
-	        input = input.toString();
-	      }
-	      if (!angular.isArray(input) && !angular.isString(input)) {
-	        return input;
-	      }
-
-	      begin = (!begin || isNaN(begin)) ? 0 : parseInt(begin);
-	      begin = (begin < 0 && begin >= -input.length) ? input.length + begin : begin;
-
-	      if (limit >= 0) {
-	        return input.slice(begin, begin + limit);
-	      } else if (begin === 0) {
-	        return input.slice(limit, input.length);
-	      } else {
-	        return input.slice(Math.max(0, begin + limit), begin);
-	      }
-	    };
-
-	  }]);
-
-
-/***/ },
-/* 58 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .filter('calendarTruncateEventTitle', function() {
-
-	    return function(string, length, boxHeight) {
-	      if (!string) {
-	        return '';
-	      }
-
-	      //Only truncate if if actually needs truncating
-	      if (string.length >= length && string.length / 20 > boxHeight / 30) {
-	        return string.substr(0, length) + '...';
-	      } else {
-	        return string;
-	      }
-	    };
-
-	  });
-
-
-/***/ },
-/* 59 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .filter('calendarTrustAsHtml', ["$sce", function($sce) {
-
-	    return function(text) {
-	      return $sce.trustAsHtml(text);
-	    };
-
-	  }]);
-
-
-/***/ },
-/* 60 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var map = {
-		"./calendarConfig.js": 61,
-		"./calendarEventTitle.js": 62,
-		"./calendarHelper.js": 63,
-		"./calendarTitle.js": 64,
-		"./interact.js": 65,
-		"./moment.js": 67
-	};
-	function webpackContext(req) {
-		return __webpack_require__(webpackContextResolve(req));
-	};
-	function webpackContextResolve(req) {
-		return map[req] || (function() { throw new Error("Cannot find module '" + req + "'.") }());
-	};
-	webpackContext.keys = function webpackContextKeys() {
-		return Object.keys(map);
-	};
-	webpackContext.resolve = webpackContextResolve;
-	module.exports = webpackContext;
-	webpackContext.id = 60;
-
-
-/***/ },
-/* 61 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .constant('calendarConfig', {
-	    allDateFormats: {
-	      angular: {
-	        date: {
-	          hour: 'ha',
-	          day: 'd MMM',
-	          month: 'MMMM',
-	          weekDay: 'EEEE',
-	          time: 'HH:mm',
-	          datetime: 'MMM d, h:mm a'
-	        },
-	        title: {
-	          day: 'EEEE d MMMM, yyyy',
-	          week: 'Week {week} of {year}',
-	          month: 'MMMM yyyy',
-	          year: 'yyyy'
-	        }
-	      },
-	      moment: {
-	        date: {
-	          hour: 'ha',
-	          day: 'D MMM',
-	          month: 'MMMM',
-	          weekDay: 'dddd',
-	          time: 'HH:mm',
-	          datetime: 'MMM D, h:mm a'
-	        },
-	        title: {
-	          day: 'dddd D MMMM, YYYY',
-	          week: 'Week {week} of {year}',
-	          month: 'MMMM YYYY',
-	          year: 'YYYY'
-	        }
-	      }
-	    },
-	    get dateFormats() {
-	      return this.allDateFormats[this.dateFormatter].date;
-	    },
-	    get titleFormats() {
-	      return this.allDateFormats[this.dateFormatter].title;
-	    },
-	    dateFormatter: 'angular',
-	    showTimesOnWeekView: false,
-	    displayAllMonthEvents: false,
-	    i18nStrings: {
-	      weekNumber: 'Week {week}'
-	    },
-	    templates: {},
-	    colorTypes: {
-	      info: {
-	        primary: '#1e90ff',
-	        secondary: '#d1e8ff'
-	      },
-	      important: {
-	        primary: '#ad2121',
-	        secondary: '#fae3e3'
-	      },
-	      warning: {
-	        primary: '#e3bc08',
-	        secondary: '#fdf1ba'
-	      },
-	      inverse: {
-	        primary: '#1b1b1b',
-	        secondary: '#c1c1c1'
-	      },
-	      special: {
-	        primary: '#800080',
-	        secondary: '#ffe6ff'
-	      },
-	      success: {
-	        primary: '#006400',
-	        secondary: '#caffca'
-	      }
-	    }
-	  });
-
-
-/***/ },
-/* 62 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-
-	angular
-	  .module('mwl.calendar')
-	  .factory('calendarEventTitle', ["calendarDateFilter", "calendarTruncateEventTitleFilter", function(calendarDateFilter, calendarTruncateEventTitleFilter) {
-
-	    function yearView(event) {
-	      return event.title + ' (' + calendarDateFilter(event.startsAt, 'datetime', true) + ')';
-	    }
-
-	    function monthView(event) {
-	      return event.title + ' (' + calendarDateFilter(event.startsAt, 'time', true) + ')';
-	    }
-
-	    function monthViewTooltip(event) {
-	      return calendarDateFilter(event.startsAt, 'time', true) + ' - ' + event.title;
-	    }
-
-	    function weekView(event) {
-	      return event.title;
-	    }
-
-	    function weekViewTooltip(event) {
-	      return event.title;
-	    }
-
-	    function dayView(event) {
-	      return event.allDay ? event.title : calendarTruncateEventTitleFilter(event.title, 20, event.height);
-	    }
-
-	    function dayViewTooltip(event) {
-	      return event.title;
-	    }
-
-	    return {
-	      yearView: yearView,
-	      monthView: monthView,
-	      monthViewTooltip: monthViewTooltip,
-	      weekView: weekView,
-	      weekViewTooltip: weekViewTooltip,
-	      dayView: dayView,
-	      dayViewTooltip: dayViewTooltip
-	    };
-
-	  }]);
-
-
-/***/ },
-/* 63 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-	var calendarUtils = __webpack_require__(17);
-
-	angular
-	  .module('mwl.calendar')
-	  .factory('calendarHelper', ["$q", "$templateRequest", "dateFilter", "moment", "calendarConfig", function($q, $templateRequest, dateFilter, moment, calendarConfig) {
-
-	    function formatDate(date, format) {
-	      if (calendarConfig.dateFormatter === 'angular') {
-	        return dateFilter(moment(date).toDate(), format);
-	      } else if (calendarConfig.dateFormatter === 'moment') {
-	        return moment(date).format(format);
-	      } else {
-	        throw new Error('Unknown date formatter: ' + calendarConfig.dateFormatter);
-	      }
-	    }
-
-	    function adjustEndDateFromStartDiff(oldStart, newStart, oldEnd) {
-	      if (!oldEnd) {
-	        return oldEnd;
-	      }
-	      var diffInSeconds = moment(newStart).diff(moment(oldStart));
-	      return moment(oldEnd).add(diffInSeconds);
-	    }
-
-	    function getRecurringEventPeriod(eventPeriod, recursOn, containerPeriodStart) {
-
-	      var eventStart = moment(eventPeriod.start);
-	      var eventEnd = moment(eventPeriod.end);
-	      var periodStart = moment(containerPeriodStart);
-
-	      if (recursOn) {
-
-	        switch (recursOn) {
-	          case 'year':
-	            eventStart.set({
-	              year: periodStart.year()
-	            });
-	            break;
-
-	          case 'month':
-	            eventStart.set({
-	              year: periodStart.year(),
-	              month: periodStart.month()
-	            });
-	            break;
-
-	          default:
-	            throw new Error('Invalid value (' + recursOn + ') given for recurs on. Can only be year or month.');
-	        }
-
-	        eventEnd = adjustEndDateFromStartDiff(eventPeriod.start, eventStart, eventEnd);
-
-	      }
-
-	      return {start: eventStart, end: eventEnd};
-
-	    }
-
-	    function eventIsInPeriod(event, periodStart, periodEnd) {
-
-	      periodStart = moment(periodStart);
-	      periodEnd = moment(periodEnd);
-
-	      var eventPeriod = getRecurringEventPeriod({start: event.startsAt, end: event.endsAt || event.startsAt}, event.recursOn, periodStart);
-	      var eventStart = eventPeriod.start;
-	      var eventEnd = eventPeriod.end;
-
-	      return (eventStart.isAfter(periodStart) && eventStart.isBefore(periodEnd)) ||
-	        (eventEnd.isAfter(periodStart) && eventEnd.isBefore(periodEnd)) ||
-	        (eventStart.isBefore(periodStart) && eventEnd.isAfter(periodEnd)) ||
-	        eventStart.isSame(periodStart) ||
-	        eventEnd.isSame(periodEnd);
-
-	    }
-
-	    function filterEventsInPeriod(events, startPeriod, endPeriod) {
-	      return events.filter(function(event) {
-	        return eventIsInPeriod(event, startPeriod, endPeriod);
-	      });
-	    }
-
-	    function getEventsInPeriod(calendarDate, period, allEvents) {
-	      var startPeriod = moment(calendarDate).startOf(period);
-	      var endPeriod = moment(calendarDate).endOf(period);
-	      return filterEventsInPeriod(allEvents, startPeriod, endPeriod);
-	    }
-
-	    function getBadgeTotal(events) {
-	      return events.filter(function(event) {
-	        return event.incrementsBadgeTotal !== false;
-	      }).length;
-	    }
-
-	    function getWeekDayNames() {
-	      var weekdays = [];
-	      var count = 0;
-	      while (count < 7) {
-	        weekdays.push(formatDate(moment().weekday(count++), calendarConfig.dateFormats.weekDay));
-	      }
-	      return weekdays;
-	    }
-
-	    function getYearView(events, viewDate, cellModifier) {
-
-	      var view = [];
-	      var eventsInPeriod = getEventsInPeriod(viewDate, 'year', events);
-	      var month = moment(viewDate).startOf('year');
-	      var count = 0;
-	      while (count < 12) {
-	        var startPeriod = month.clone();
-	        var endPeriod = startPeriod.clone().endOf('month');
-	        var periodEvents = filterEventsInPeriod(eventsInPeriod, startPeriod, endPeriod);
-	        var cell = {
-	          label: formatDate(startPeriod, calendarConfig.dateFormats.month),
-	          isToday: startPeriod.isSame(moment().startOf('month')),
-	          events: periodEvents,
-	          date: startPeriod,
-	          badgeTotal: getBadgeTotal(periodEvents)
-	        };
-
-	        cellModifier({calendarCell: cell});
-	        view.push(cell);
-	        month.add(1, 'month');
-	        count++;
-	      }
-
-	      return view;
-
-	    }
-
-	    function getMonthView(events, viewDate, cellModifier) {
-
-	      // hack required to work with the calendar-utils api
-	      events.forEach(function(event) {
-	        event.start = event.startsAt;
-	        event.end = event.endsAt;
-	      });
-
-	      var view = calendarUtils.getMonthView({
-	        events: events,
-	        viewDate: viewDate,
-	        weekStartsOn: moment().startOf('week').day()
-	      });
-
-	      view.days = view.days.map(function(day) {
-	        day.date = moment(day.date);
-	        day.label = day.date.date();
-	        day.badgeTotal = getBadgeTotal(day.events);
-	        if (!calendarConfig.displayAllMonthEvents && !day.inMonth) {
-	          day.events = [];
-	        }
-	        cellModifier({calendarCell: day});
-	        return day;
-	      });
-
-	      // remove hack
-	      events.forEach(function(event) {
-	        delete event.start;
-	        delete event.end;
-	      });
-
-	      return view;
-
-	    }
-
-	    function getWeekView(events, viewDate) {
-
-	      var days = calendarUtils.getWeekViewHeader({
-	        viewDate: viewDate,
-	        weekStartsOn: moment().startOf('week').day()
-	      }).map(function(day) {
-	        day.date = moment(day.date);
-	        day.weekDayLabel = formatDate(day.date, calendarConfig.dateFormats.weekDay);
-	        day.dayLabel = formatDate(day.date, calendarConfig.dateFormats.day);
-	        return day;
-	      });
-
-	      var startOfWeek = moment(viewDate).startOf('week');
-	      var endOfWeek = moment(viewDate).endOf('week');
-
-	      var eventRows = calendarUtils.getWeekView({
-	        viewDate: viewDate,
-	        weekStartsOn: moment().startOf('week').day(),
-	        events: filterEventsInPeriod(events, startOfWeek, endOfWeek).map(function(event) {
-
-	          var weekViewStart = moment(startOfWeek).startOf('day');
-
-	          var eventPeriod = getRecurringEventPeriod({
-	            start: moment(event.startsAt),
-	            end: moment(event.endsAt || event.startsAt)
-	          }, event.recursOn, weekViewStart);
-
-	          eventPeriod.originalEvent = event;
-
-	          return eventPeriod;
-
-	        })
-	      }).map(function(eventRow) {
-
-	        eventRow.row = eventRow.row.map(function(rowEvent) {
-	          rowEvent.event = rowEvent.event.originalEvent;
-	          return rowEvent;
-	        });
-
-	        return eventRow;
-
-	      });
-
-	      return {days: days, eventRows: eventRows};
-
-	    }
-
-	    function getDayView(events, viewDate, dayViewStart, dayViewEnd, dayViewSplit, dayViewEventWidth) {
-
-	      var dayStart = (dayViewStart || '00:00').split(':');
-	      var dayEnd = (dayViewEnd || '23:59').split(':');
-
-	      var view = calendarUtils.getDayView({
-	        events: events.map(function(event) { // hack required to work with event API
-	          event.start = event.startsAt;
-	          event.end = event.endsAt;
-	          return event;
-	        }),
-	        viewDate: viewDate,
-	        hourSegments: 60 / dayViewSplit,
-	        dayStart: {
-	          hour: dayStart[0],
-	          minute: dayStart[1]
-	        },
-	        dayEnd: {
-	          hour: dayEnd[0],
-	          minute: dayEnd[1]
-	        },
-	        eventWidth: dayViewEventWidth ? +dayViewEventWidth : 150,
-	        segmentHeight: 30
-	      });
-
-	      // remove hack to work with new event API
-	      events.forEach(function(event) {
-	        delete event.start;
-	        delete event.end;
-	      });
-
-	      return view;
-
-	    }
-
-	    function getWeekViewWithTimes(events, viewDate, dayViewStart, dayViewEnd, dayViewSplit) {
-	      var weekView = getWeekView(events, viewDate);
-	      var newEvents = [];
-	      var flattenedEvents = [];
-	      weekView.eventRows.forEach(function(row) {
-	        row.row.forEach(function(eventRow) {
-	          flattenedEvents.push(eventRow.event);
-	        });
-	      });
-	      weekView.days.forEach(function(day) {
-	        var dayEvents = flattenedEvents.filter(function(event) {
-	          return moment(event.startsAt).startOf('day').isSame(moment(day.date).startOf('day'));
-	        });
-	        var newDayEvents = getDayView(
-	          dayEvents,
-	          day.date,
-	          dayViewStart,
-	          dayViewEnd,
-	          dayViewSplit
-	        ).events;
-	        newEvents = newEvents.concat(newDayEvents);
-	      });
-	      weekView.eventRows = [{
-	        row: newEvents.map(function(dayEvent) {
-	          var event = dayEvent.event;
-	          return {
-	            event: event,
-	            top: dayEvent.top,
-	            offset: calendarUtils.getWeekViewEventOffset(
-	              {start: event.startsAt, end: event.endsAt},
-	              moment(viewDate).startOf('week')
-	            )
-	          };
-	        })
-	      }];
-	      return weekView;
-	    }
-
-	    function getDayViewHeight(dayViewStart, dayViewEnd, dayViewSplit) {
-	      var dayViewStartM = moment(dayViewStart || '00:00', 'HH:mm');
-	      var dayViewEndM = moment(dayViewEnd || '23:59', 'HH:mm');
-	      var hourHeight = (60 / dayViewSplit) * 30;
-	      return ((dayViewEndM.diff(dayViewStartM, 'minutes') / 60) * hourHeight) + 3;
-	    }
-
-	    function loadTemplates() {
-
-	      var templatePromises = Object.keys(calendarConfig.templates).map(function(key) {
-	        var templateUrl = calendarConfig.templates[key];
-	        return $templateRequest(templateUrl);
-	      });
-
-	      return $q.all(templatePromises);
-
-	    }
-
-	    return {
-	      getWeekDayNames: getWeekDayNames,
-	      getYearView: getYearView,
-	      getMonthView: getMonthView,
-	      getWeekView: getWeekView,
-	      getDayView: getDayView,
-	      getWeekViewWithTimes: getWeekViewWithTimes,
-	      getDayViewHeight: getDayViewHeight,
-	      adjustEndDateFromStartDiff: adjustEndDateFromStartDiff,
-	      formatDate: formatDate,
-	      loadTemplates: loadTemplates,
-	      eventIsInPeriod: eventIsInPeriod //expose for testing only
-	    };
-
-	  }]);
-
-
-/***/ },
-/* 64 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -3976,40 +2865,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 65 */
+/* 52 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
 	var angular = __webpack_require__(12);
-	var interact;
-	try {
-	  interact = __webpack_require__(66);
-	} catch (e) {
-	  /* istanbul ignore next */
-	  interact = null;
-	}
-
-	angular
-	  .module('mwl.calendar')
-	  .constant('interact', interact);
-
-
-/***/ },
-/* 66 */
-/***/ function(module, exports) {
-
-	if(typeof __WEBPACK_EXTERNAL_MODULE_66__ === 'undefined') {var e = new Error("Cannot find module \"undefined\""); e.code = 'MODULE_NOT_FOUND'; throw e;}
-	module.exports = __WEBPACK_EXTERNAL_MODULE_66__;
-
-/***/ },
-/* 67 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var angular = __webpack_require__(12);
-	var moment = __webpack_require__(68);
+	var moment = __webpack_require__(53);
 
 	angular
 	  .module('mwl.calendar')
@@ -4017,10 +2879,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 68 */
+/* 53 */
 /***/ function(module, exports) {
 
-	module.exports = __WEBPACK_EXTERNAL_MODULE_68__;
+	module.exports = __WEBPACK_EXTERNAL_MODULE_53__;
 
 /***/ }
 /******/ ])

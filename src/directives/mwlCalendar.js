@@ -120,7 +120,8 @@ angular
   .directive('mwlCalendar', function() {
 
     return {
-      template: '<div mwl-dynamic-directive-template name="calendar" overrides="vm.customTemplateUrls"></div>',
+      // template: '<div mwl-dynamic-directive-template name="calendar" overrides="vm.customTemplateUrls"></div>',
+      templateUrl: 'components/calendar.html',
       restrict: 'E',
       scope: {
         events: '=',
